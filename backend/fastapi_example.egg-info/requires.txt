@@ -1,0 +1,8 @@
+fastapi>=0.135.3
+turso_serverless
+python-dotenv
+slowapi
+google-genai
+pillow
+pydantic
+requests
