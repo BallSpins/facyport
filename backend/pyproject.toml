@@ -12,5 +12,6 @@ dependencies = [
     "pydantic",
     "requests",
     "boto3",
-    "python-multipart"
+    "python-multipart",
+    "qstash"
 ]

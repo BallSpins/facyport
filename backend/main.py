@@ -1,4 +1,5 @@
 import os
+import base64
 from fastapi import FastAPI, HTTPException, status, Request, Form, File, UploadFile, Depends
 from deps import verify_admin_token
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 from typing import Optional
+from qstash import Receiver
 
 from database import get_db_connection
 
@@ -16,6 +18,7 @@ from repositories.report_repo import ReportRepository
 from services.report_service import ReportService
 from services.ai_service import AIService
 from services.storage_service import StorageService
+from services.qstash_service import QStashService
 
 # DTOs / Schemas
 from models import (
@@ -49,6 +52,10 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
+qstash_receiver = Receiver(
+  current_signing_key=os.getenv("QSTASH_CURRENT_SIGNING_KEY", ""),
+  next_signing_key=os.getenv("QSTASH_NEXT_SIGNING_KEY", ""),
+)
 
 def get_ai_service() -> AIService:
   """Helper untuk menginisialisasi AIService dengan API Key dari Environment Variable."""
@@ -72,10 +79,52 @@ def read_root():
 
 
 # --- ENDPOINTS LAPORAN (REPORTS) ---
+
+# di comment untuk testing
+# @app.post(
+#     "/api/reports-sync",
+#     response_model=ReportProcessResult,
+#     status_code=status.HTTP_201_CREATED,
+#     tags=["Reports"],
+# )
+# @limiter.limit("30/minute")
+# async def create_report(
+#     request: Request,
+#     raw_text: str = Form(...),
+#     image: Optional[UploadFile] = File(None)
+# ):
+#     db = get_db_connection()
+#     ai_service = get_ai_service()
+#     service = ReportService(db_conn=db, ai_service=ai_service)
+
+#     file_bytes: Optional[bytes] = None
+#     img_key: Optional[str] = None
+
+#     if image and image.filename:
+#         file_bytes = await image.read()
+#         if len(file_bytes) > 0:
+#             try:
+#                 storage_service = StorageService()
+#                 # Simpan ke R2 Private Bucket
+#                 img_key = storage_service.upload_private_file(
+#                     file_bytes=file_bytes,
+#                     content_type=image.content_type or "image/jpeg"
+#                 )
+#             except Exception as e:
+#                 print(f"[!] Gagal upload ke R2 Private Storage: {e}")
+
+#     # Jalankan AI Pipeline menggunakan file_bytes yang ada di memori
+#     result = service.process_incoming_report(
+#         incoming_text=raw_text,
+#         img_bytes=file_bytes,
+#         img_key=img_key
+#     )
+#     return result
+
+
 @app.post(
     "/api/reports",
-    response_model=ReportProcessResult,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_202_ACCEPTED,
     tags=["Reports"],
 )
 @limiter.limit("30/minute")
@@ -84,11 +133,7 @@ async def create_report(
     raw_text: str = Form(...),
     image: Optional[UploadFile] = File(None)
 ):
-    db = get_db_connection()
-    ai_service = get_ai_service()
-    service = ReportService(db_conn=db, ai_service=ai_service)
-
-    file_bytes: Optional[bytes] = None
+    file_bytes_b64: Optional[str] = None
     img_key: Optional[str] = None
 
     if image and image.filename:
@@ -102,16 +147,75 @@ async def create_report(
                     content_type=image.content_type or "image/jpeg"
                 )
             except Exception as e:
-                print(f"[!] Gagal upload ke R2 Private Storage: {e}")
+                print(f"[!] Gagal upload ke R2 Storage: {e}")
 
-    # Jalankan AI Pipeline menggunakan file_bytes yang ada di memori
+            file_bytes_b64 = base64.b64encode(file_bytes).decode("utf-8")
+
+    payload = {
+        "raw_text": raw_text,
+        "img_bytes_b64": file_bytes_b64,
+        "img_key": img_key,
+    }
+
+    try:
+        qstash_service = QStashService()
+        res = qstash_service.enqueue_report(payload)
+        return {
+            "status": "queued",
+            "message": "Laporan berhasil diterima dan masuk ke antrean pemrosesan AI.",
+            "message_id": getattr(res, "message_id", str(res))
+        }
+    except Exception as e:
+        print(f"[!] Gagal enqueue ke QStash: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Gagal memasukkan laporan ke dalam antrean sistem."
+        )
+
+
+# --- 2. WORKER ENDPOINT (PENERIMA PANGGILAN DARI QSTASH) ---
+@app.post(
+    "/api/worker/process-report",
+    tags=["Worker"],
+)
+async def worker_process_report(request: Request):
+    """
+    Endpoint ini dipanggil oleh Server QStash melalui HTTP POST secara otomatis.
+    Di sinilah AIService & ReportService dieksekusi.
+    """
+    body_bytes = await request.body()
+    signature = request.headers.get("Upstash-Signature")
+
+    # Verifikasi keamanan request (hanya menerima request sah dari QStash)
+    if signature and os.getenv("QSTASH_CURRENT_SIGNING_KEY"):
+        try:
+            qstash_receiver.verify(body=body_bytes.decode("utf-8"), signature=signature)
+        except Exception as e:
+            print(f"[!] Invalid QStash Signature: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Verifikasi Upstash Signature gagal."
+            )
+
+    payload = await request.json()
+    raw_text = payload.get("raw_text")
+    img_bytes_b64 = payload.get("img_bytes_b64")
+    img_key = payload.get("img_key")
+
+    img_bytes = base64.b64decode(img_bytes_b64) if img_bytes_b64 else None
+
+    # MEMANGGIL SERVICE AI & DB DI SINI
+    db = get_db_connection()
+    ai_service = get_ai_service()
+    service = ReportService(db_conn=db, ai_service=ai_service)
+
     result = service.process_incoming_report(
         incoming_text=raw_text,
-        img_bytes=file_bytes,
+        img_bytes=img_bytes,
         img_key=img_key
     )
-    return result
 
+    return {"status": "success", "result": result}
 
 @app.get(
   "/api/reports/{report_id}",
