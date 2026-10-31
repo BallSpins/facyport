@@ -33,8 +33,9 @@ conn.execute("""
 conn.execute("""
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
-    name TEXT,
-    email TEXT
+    username TEXT,
+    email TEXT,
+    password TEXT
   )
 """)
 

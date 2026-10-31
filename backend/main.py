@@ -1,5 +1,6 @@
 import os
-from fastapi import FastAPI, HTTPException, status, Request, Form, File, UploadFile
+from fastapi import FastAPI, HTTPException, status, Request, Form, File, UploadFile, Depends
+from deps import verify_admin_token
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -173,7 +174,11 @@ def get_summary_by_id(summary_id: int):
   response_model=SummaryResponse,
   tags=["Summaries"],
 )
-def update_summary_status(summary_id: int, payload: SummaryUpdateStatus):
+def update_summary_status(
+  summary_id: int, 
+  payload: SummaryUpdateStatus,
+  is_admin: bool = Depends(verify_admin_token)
+):
   """
   Memperbarui status penanganan isu (SUBMITTED -> IN_PROGRESS -> RESOLVED).
   Khusus digunakan oleh Admin/Petugas kampus.
