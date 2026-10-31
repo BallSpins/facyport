@@ -273,6 +273,25 @@ def get_summary_by_id(summary_id: int):
   return summary
 
 
+@app.get(
+  "/api/summaries/{summary_id}/reports",
+  tags=["Summaries"],
+)
+def get_reports_by_summary_id(summary_id: int):
+  """Mengambil seluruh aduan individual & foto bukti di bawah satu klaster summary_id."""
+  db = get_db_connection()
+  repo = ReportRepository(db)
+    
+  reports = repo.get_by_summary_id(summary_id) if hasattr(repo, 'get_by_summary_id') else []
+    
+  storage_service = StorageService()
+  for report in reports:
+    if report.get("img_url"):
+      report["img_url"] = storage_service.get_presigned_url(report["img_url"])
+
+  return reports
+
+
 @app.patch(
   "/api/summaries/{summary_id}/status",
   response_model=SummaryResponse,
