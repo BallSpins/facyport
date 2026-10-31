@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const instant = false;
+
 export default function ReportListPage() {
   const reports = [
     { id: '1', judul: 'AC Rusak di Gedung A', pelapor: 'Budi', status: 'Diproses', tanggal: '2026-10-30' },

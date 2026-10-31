@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const instant = false;
+
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
