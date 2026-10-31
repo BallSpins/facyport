@@ -19,9 +19,9 @@ class QStashService:
       queue="gemini-queue",
       url=worker_url,
       body=payload,
-      flow_control_key="gemini-rate-limit",
       headers={
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Upstash-Flow-Control-Key": "gemini-rate-limit"
       }
     )
     return res
