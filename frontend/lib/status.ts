@@ -4,6 +4,7 @@ export const STATUS_LABELS: Record<string, string> = {
   RESOLVED: 'Selesai',
 };
 
-export const getStatusLabel = (status: string): string => {
+export const getStatusLabel = (status: string | null | undefined): string => {
+  if (!status) return '-';
   return STATUS_LABELS[status] || status;
 };
