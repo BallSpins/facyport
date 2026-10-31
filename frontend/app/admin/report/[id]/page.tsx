@@ -8,6 +8,10 @@ import PageTransition from '../../../components/PageTransition';
 export default function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
 
+export const instant = false;
+
+export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   // Data dummy 10 foto pelapor
   const allPhotos = Array.from({ length: 10 }, (_, index) => ({
     id: index + 1,
