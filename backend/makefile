@@ -1,4 +1,4 @@
-.PHONY: test test-ai test-flow flush test-flush dev clean
+.PHONY: test test-ai test-flow flush flush-db flush-s3 test-flush dev clean
 
 test:
 	python test_ai_service.py
@@ -12,12 +12,20 @@ test-flow:
 
 flush:
 	python flush_db.py
+	python flush_s3.py
+
+flush-db:
+	python flush_db.py
+
+flush-s3:
+	python flush_s3.py
 
 test-flush: test
 	@echo y | python flush_db.py
+	@echo y | python flush_s3.py
 
 dev:
-	uvicorn main:app --reload
+	venv\Scripts\python -m uvicorn main:app --reload
 
 clean:
 	@if exist __pycache__ rmdir /s /q __pycache__

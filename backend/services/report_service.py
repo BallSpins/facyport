@@ -10,7 +10,7 @@ class ReportService:
     self.summary_repo = SummaryRepository(db_conn)
     self.report_repo = ReportRepository(db_conn)
 
-  def process_incoming_report(self, incoming_text: str, img_url: str = None) -> dict:
+  def process_incoming_report(self, incoming_text: str, img_bytes: bytes = None, img_key: str = None) -> dict:
     categories_list = self.summary_repo.get_all_categories() or ["Infrastruktur & Jalan", "Kebersihan & Lingkungan", "Keamanan & Ketertiban", "Fasilitas Umum", "Umum"]
     existing_categories_str = ", ".join(categories_list)
 
@@ -41,7 +41,7 @@ class ReportService:
     "{incoming_text}"
     """
 
-    ai_result = self.ai.moderate_and_summarize(processed_text, img_url)
+    ai_result = self.ai.moderate_and_summarize(processed_text, img_bytes)
 
     if not ai_result.get("is_valid", True):
       return {
@@ -50,6 +50,7 @@ class ReportService:
         "category": None,
         "match_score": None,
         "has_profanity": ai_result.get("has_profanity", False),
+        "process_status": ProcessStatus.DISCARDED,
         "reason": "Laporan dianggap tidak layak atau spam oleh AI"
       }
 
@@ -67,7 +68,7 @@ class ReportService:
         raw_text=incoming_text,
         summary_id=matched_summary["id"],
         has_profanity=ai_result["has_profanity"],
-        img_url=img_url
+        img_url=img_key
       )
       return {
         "summary_id": matched_summary["id"],
@@ -75,6 +76,7 @@ class ReportService:
         "category": matched_summary["category"],
         "match_score": matched_summary["match_score"],
         "has_profanity": ai_result["has_profanity"],
+        "process_status": ProcessStatus.CLUSTERED,
         "reason": "Laporan berhasil digabungkan ke klaster yang sudah ada"
       }
     else:
@@ -88,7 +90,7 @@ class ReportService:
         raw_text=incoming_text,
         summary_id=new_summary_id,
         has_profanity=ai_result["has_profanity"],
-        img_url=img_url
+        img_url=img_key
       )
       return {
         "summary_id": new_summary_id,
@@ -96,5 +98,6 @@ class ReportService:
         "category": ai_result["category"],
         "match_score": 1.0,
         "has_profanity": ai_result["has_profanity"],
+        "process_status": ProcessStatus.NEW_TOPIC,
         "reason": "Laporan baru berhasil dibuatkan klaster topik"
       }

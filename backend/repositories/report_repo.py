@@ -12,12 +12,19 @@ class ReportRepository:
 
   def get_by_id(self, report_id: int):
     cursor = self.conn.execute(
-      "SELECT id, raw_text, img_url, has_profanity FROM reports WHERE id = ?",
+      "SELECT id, summary_id, raw_text, img_url, has_profanity, created_at FROM reports WHERE id = ?",
       (report_id,)
     )
     row = cursor.fetchone()
     if row:
-      return {"id": row[0], "raw_text": row[1], "img_url": row[2], "count": row[3]}
+      return {
+        "id": row[0],
+        "summary_id": row[1],
+        "raw_text": row[2],
+        "img_url": row[3],
+        "has_profanity": bool(row[4]),
+        "created_at": str(row[5]) if row[5] else None
+      }
     return None
 
   def increment_count(self, report_id: int):

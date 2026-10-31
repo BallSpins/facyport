@@ -1,6 +1,5 @@
 import io
 import time
-import httpx
 from google import genai
 from google.genai import types
 from PIL import Image
@@ -26,24 +25,21 @@ class AIService:
         img.thumbnail((512, 512))
         return img
 
-  def moderate_and_summarize(self, prompt: str, img_url: Optional[str]) -> dict:
+  def moderate_and_summarize(self, prompt: str, img_bytes: Optional[bytes]) -> dict:
     """
-    Mengevaluasi teks & gambar aduan menggunakan gemini-2.5-flash.
+    Mengevaluasi teks & gambar aduan menggunakan gemini-3.5-flash-lite.
     Mengembalikan Python dict yang strukturnya divalidasi oleh Pydantic.
     """
 
     contents: list[Any] = [prompt]
 
-    if img_url:
+    if img_bytes:
       try:
-        # Timeout ketat 3 detik agar tidak menghambat alur backend
-        with httpx.Client(timeout=3.0) as http_client:
-          img_resp = http_client.get(img_url)
-          img_resp.raise_for_status()
-          image = self._resize_image(img_resp.content)
-          contents.append(image)
+        image = self._resize_image(img_bytes)
+        contents.append(image)
+        print("[+] Gambar in-memory berhasil dimuat ke prompt AI.")
       except Exception as e:
-        print(f"[!] Gagal mengambil/mengompres gambar: {e}")
+        print(f"[!] Gagal mengolah bytes gambar untuk AI: {e}")
 
     # Panggil API
     max_retries = 3

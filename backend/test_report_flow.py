@@ -1,5 +1,6 @@
 import os
 import json
+import httpx
 from dotenv import load_dotenv
 from database import get_db_connection
 from services.ai_service import AIService
@@ -67,7 +68,14 @@ def run_e2e_campus_tests():
     text_4 = "Atap plafon bocor dan jebol di lorong perpustakaan pusat, air menggenang membahayakan mahasiswa."
     sample_img_url = "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=600"
     
-    res_4 = report_service.process_incoming_report(incoming_text=text_4, img_url=sample_img_url)
+    img_bytes = httpx.get(sample_img_url).content
+    dummy_r2_key = "reports/test_plafon_bocor.jpg"
+
+    res_4 = report_service.process_incoming_report(
+        incoming_text=text_4, 
+        img_bytes=img_bytes, 
+        img_key=dummy_r2_key
+    )
     print("Hasil Test 4:")
     print(json.dumps(res_4, indent=2, ensure_ascii=False))
     print("-" * 60)

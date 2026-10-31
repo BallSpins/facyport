@@ -10,5 +10,7 @@ dependencies = [
     "google-genai",
     "pillow",
     "pydantic",
-    "requests"
+    "requests",
+    "boto3",
+    "python-multipart"
 ]

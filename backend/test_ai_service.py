@@ -1,5 +1,6 @@
 import os
 import json
+import httpx
 from dotenv import load_dotenv
 from services.ai_service import AIService
 
@@ -11,7 +12,6 @@ if not api_key:
 
 ai_service = AIService(api_key)
 
-# Helper untuk membuat prompt uji coba sesuai aturan sistem konteks kampus
 def create_test_prompt(incoming_text: str) -> str:
     categories_str = "Fasilitas Kelas, Kebersihan Kampus, Keamanan & Ketertiban, Layanan Akademik, Umum"
     return f"""
@@ -49,8 +49,7 @@ def run_tests():
     # ----------------------------------------------------------------------
     print("[TEST 1] Laporan Valid Kerusakan Fasilitas Kelas...")
     text_valid = "AC di Ruang Kuliah 201 Gedung Utama mati total dari pagi, mahasiswa kepanasan dan proyektor juga bergaris."
-    prompt_1 = create_test_prompt(text_valid)
-    res_1 = ai_service.moderate_and_summarize(prompt_1, None)
+    res_1 = ai_service.moderate_and_summarize(create_test_prompt(text_valid), None)
     print(json.dumps(res_1, indent=2, ensure_ascii=False))
     print("-" * 50)
 
@@ -59,8 +58,7 @@ def run_tests():
     # ----------------------------------------------------------------------
     print("\n[TEST 2] Laporan Spam / Promosi Joki Tugas...")
     text_spam = "Jual chip domino & joki skripsi kilat harga murah 50rb langsung acc klik link bit.ly/jokigacor"
-    prompt_2 = create_test_prompt(text_spam)
-    res_2 = ai_service.moderate_and_summarize(prompt_2, None)
+    res_2 = ai_service.moderate_and_summarize(create_test_prompt(text_spam), None)
     print(json.dumps(res_2, indent=2, ensure_ascii=False))
     print("-" * 50)
 
@@ -69,8 +67,7 @@ def run_tests():
     # ----------------------------------------------------------------------
     print("\n[TEST 3] Laporan Mengandung Makian / Profanity...")
     text_profanity = "Woi birokrasi kampus ga becus jancok, wifi perpustakaan mati mulu dari kemarin padahal besok deadline tugas anjing!"
-    prompt_3 = create_test_prompt(text_profanity)
-    res_3 = ai_service.moderate_and_summarize(prompt_3, None)
+    res_3 = ai_service.moderate_and_summarize(create_test_prompt(text_profanity), None)
     print(json.dumps(res_3, indent=2, ensure_ascii=False))
     print("-" * 50)
 
@@ -80,8 +77,12 @@ def run_tests():
     print("\n[TEST 4] Laporan Multimodal dengan Foto Fasilitas Kampus...")
     text_multimodal = "Plafon atap bocor dan jebol di lorong lantai 2 perpustakaan pusat, air menggenang membahayakan."
     sample_img_url = "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=600"
+    
+    # Ambil bytes gambar untuk simulasi file upload
+    img_bytes = httpx.get(sample_img_url).content
+    
     prompt_4 = create_test_prompt(text_multimodal)
-    res_4 = ai_service.moderate_and_summarize(prompt_4, img_url=sample_img_url)
+    res_4 = ai_service.moderate_and_summarize(prompt_4, img_bytes=img_bytes)
     print(json.dumps(res_4, indent=2, ensure_ascii=False))
     print("-" * 50)
 

@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, Field
-from enums import SummaryStatus
+from enums import SummaryStatus, ProcessStatus
 
 # --- Summary Models ---
 class SummaryBase(BaseModel):
@@ -39,6 +39,7 @@ class ReportProcessResult(BaseModel):
   category: Optional[str] = None
   match_score: Optional[float] = None
   has_profanity: bool = False
+  process_status: ProcessStatus
   reason: Optional[str] = None
 
 class AIResult(BaseModel):

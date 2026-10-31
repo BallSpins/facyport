@@ -31,7 +31,7 @@ class SummaryRepository:
         id, summary, category, keywords, count, status, created_at,
         vector_distance_cos(embedding, vector32(?)) AS distance
       FROM summaries
-      WHERE embedding IS NOT NULL
+      WHERE embedding IS NOT NULL AND status != 'RESOLVED'
       ORDER BY distance ASC
       LIMIT 1
       """,
