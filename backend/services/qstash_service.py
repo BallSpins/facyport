@@ -1,4 +1,5 @@
 import os
+import json
 from qstash import QStash
 
 class QStashService:
@@ -18,7 +19,7 @@ class QStashService:
     res = self.client.message.enqueue(
       queue="gemini-queue",
       url=worker_url,
-      body=payload,
+      body=json.dumps(payload),
       headers={
         "Content-Type": "application/json",
         "Upstash-Flow-Control-Key": "gemini-rate-limit"
