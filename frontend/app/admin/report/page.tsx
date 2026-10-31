@@ -23,6 +23,7 @@ export default function ReportListPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -104,15 +105,48 @@ export default function ReportListPage() {
     return null;
   };
 
-  const handleConfirmStatusChange = () => {
+  const handleConfirmStatusChange = async () => {
     if (!selectedReport) return;
     const nextStatus = getNextStatus(selectedReport.status);
     if (!nextStatus) return;
 
-    setReports((prev) =>
-      prev.map((item) => (item.id === selectedReport.id ? { ...item, status: nextStatus } : item))
-    );
-    setSelectedReport(null);
+    const adminToken = process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY;
+
+    setUpdatingStatus(true);
+    try {
+      const response = await fetch(
+        `https://facyport-backend-nine.vercel.app/api/summaries/${selectedReport.id}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            status: nextStatus,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Gagal memperbarui status (${response.status})`);
+      }
+
+      const updatedSummary = await response.json();
+
+      setReports((prev) =>
+        prev.map((item) =>
+          item.id === selectedReport.id ? { ...item, status: updatedSummary.status } : item
+        )
+      );
+
+      setSelectedReport(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengubah status.');
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   return (
