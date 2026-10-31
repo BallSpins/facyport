@@ -1,9 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../../components/PageTransition';
+
+interface Report {
+  id: number;
+  judul: string;
+  kategori: string;
+  jumlahPelapor: number;
+  status: string;
+  tanggal: string;
+}
 
 export default function ReportListPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,34 +20,55 @@ export default function ReportListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 8;
 
-  // State untuk menyimpan daftar report (ditambahkan field jumlahPelapor)
-  const [reports, setReports] = useState([
-    { id: '1', judul: 'AC Rusak di Gedung A', pelapor: 'Budi', jumlahPelapor: 5, status: 'Diproses', tanggal: '2026-10-30' },
-    { id: '2', judul: 'Lampu Mati di Koridor B', pelapor: 'Siti', jumlahPelapor: 2, status: 'Selesai', tanggal: '2026-10-28' },
-    { id: '3', judul: 'Kebocoran Atap Lab C', pelapor: 'Andi', jumlahPelapor: 12, status: 'Menunggu', tanggal: '2026-10-31' },
-    { id: '4', judul: 'Pintu Toilet Gedung B Macet', pelapor: 'Dewi', jumlahPelapor: 3, status: 'Selesai', tanggal: '2026-10-29' },
-    { id: '5', judul: 'Kabel LAN Putus di Perpus', pelapor: 'Rizky', jumlahPelapor: 8, status: 'Diproses', tanggal: '2026-10-28' },
-    { id: '6', judul: 'Kursi Kuliah patah di R.302', pelapor: 'Eko', jumlahPelapor: 1, status: 'Selesai', tanggal: '2026-10-28' },
-    { id: '7', judul: 'Kran Air Toilet Gedung A Rusak', pelapor: 'Fitri', jumlahPelapor: 4, status: 'Menunggu', tanggal: '2026-10-27' },
-    { id: '8', judul: 'Stop Kontak Longgar di Aula', pelapor: 'Guntur', jumlahPelapor: 6, status: 'Selesai', tanggal: '2026-10-26' },
-    { id: '9', judul: 'Proyektor Redup di Ruang Sidang', pelapor: 'Hendra', jumlahPelapor: 15, status: 'Menunggu', tanggal: '2026-10-26' },
-    { id: '10', judul: 'Plafon Bocor Hall Utama', pelapor: 'Joko', jumlahPelapor: 9, status: 'Diproses', tanggal: '2026-10-26' },
-  ]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const res = await fetch('https://facyport-backend-nine.vercel.app/api/summaries');
+        if (!res.ok) throw new Error(`Gagal mengambil data (${res.status})`);
+        const data = await res.json();
+        const mapped: Report[] = data.map((item: {
+          id: number;
+          summary: string;
+          category: string;
+          count: number;
+          status: string;
+          created_at: string;
+        }) => ({
+          id: item.id,
+          judul: item.summary || '(Belum ada ringkasan)',
+          kategori: item.category || '-',
+          jumlahPelapor: item.count,
+          status: item.status,
+          tanggal: item.created_at.split(' ')[0],
+        }));
+        setReports(mapped);
+      } catch (err) {
+        setFetchError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReports();
+  }, []);
 
   // State untuk Modal Konfirmasi Status
-  const [selectedReport, setSelectedReport] = useState<{ id: string; judul: string; status: string } | null>(null);
+  const [selectedReport, setSelectedReport] = useState<{ id: number; judul: string; status: string } | null>(null);
 
   // Logika Filter & Pencarian
   const filteredReports = useMemo(() => {
     let result = reports.filter((r) => {
       const matchesSearch =
         r.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.pelapor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.id.toLowerCase().includes(searchQuery.toLowerCase());
+        r.kategori.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.id.toString().includes(searchQuery.toLowerCase());
 
-      const matchesStatus = 
-        statusFilter === 'Semua' || 
-        statusFilter === 'Paling Ramai' || 
+      const matchesStatus =
+        statusFilter === 'Semua' ||
+        statusFilter === 'Paling Ramai' ||
         r.status === statusFilter;
 
       return matchesSearch && matchesStatus;
@@ -69,8 +99,8 @@ export default function ReportListPage() {
   };
 
   const getNextStatus = (currentStatus: string) => {
-    if (currentStatus === 'Menunggu') return 'Diproses';
-    if (currentStatus === 'Diproses') return 'Selesai';
+    if (currentStatus === 'SUBMITTED') return 'IN_PROGRESS';
+    if (currentStatus === 'IN_PROGRESS') return 'RESOLVED';
     return null;
   };
 
@@ -91,6 +121,18 @@ export default function ReportListPage() {
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-extrabold mb-8 text-black tracking-tight">Daftar Laporan</h1>
 
+          {/* Loading & Error State */}
+          {loading && (
+            <div className="bg-white p-8 rounded-2xl shadow border border-gray-100 mb-8 text-center text-gray-500 text-sm animate-pulse">
+              Memuat data laporan...
+            </div>
+          )}
+          {fetchError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl px-5 py-4 mb-8 text-sm">
+              ⚠️ {fetchError}
+            </div>
+          )}
+
           {/* Kontrol Pencarian & Filter Status */}
           <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 mb-8 flex flex-col sm:flex-row justify-between gap-4 items-center">
             <div className="w-full sm:w-96">
@@ -104,17 +146,22 @@ export default function ReportListPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-              {['Semua', 'Menunggu', 'Diproses', 'Selesai', 'Paling Ramai'].map((status) => (
+              {[
+                { value: 'Semua', label: 'Semua' },
+                { value: 'SUBMITTED', label: 'Submitted' },
+                { value: 'IN_PROGRESS', label: 'In Progress' },
+                { value: 'RESOLVED', label: 'Resolved' },
+                { value: 'Paling Ramai', label: '🔥 Paling Ramai' },
+              ].map(({ value, label }) => (
                 <button
-                  key={status}
-                  onClick={() => handleStatusFilterChange(status)}
-                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                    statusFilter === status
+                  key={value}
+                  onClick={() => handleStatusFilterChange(value)}
+                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${statusFilter === value
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
-                  {status === 'Paling Ramai' ? ' Paling Ramai' : status}
+                  {label}
                 </button>
               ))}
             </div>
@@ -141,7 +188,12 @@ export default function ReportListPage() {
                       return (
                         <tr key={r.id} className="hover:bg-gray-50/60 transition-colors">
                           <td className="px-6 py-4 text-sm font-medium">{r.id}</td>
-                          <td className="px-6 py-4 text-sm font-semibold">{r.judul}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <p className="font-semibold">{r.judul}</p>
+                            {r.kategori && r.kategori !== '-' && (
+                              <p className="text-xs text-gray-400 mt-0.5">{r.kategori}</p>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-sm">
                             <span className="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-lg font-bold text-xs border border-orange-200 inline-flex items-center gap-1">
                               👥 {r.jumlahPelapor} Orang
@@ -154,14 +206,13 @@ export default function ReportListPage() {
                                   setSelectedReport({ id: r.id, judul: r.judul, status: r.status });
                                 }
                               }}
-                              title={nextStatus ? `Ubah status ke ${nextStatus}` : 'Status sudah Selesai (Tidak dapat diubah)'}
-                              className={`px-3 py-1 rounded-md w-full text-xs font-semibold inline-flex items-center space-x-1 transition-all ${
-                                r.status === 'Selesai'
+                              title={nextStatus ? `Ubah status ke ${nextStatus}` : 'Status sudah RESOLVED (Tidak dapat diubah)'}
+                              className={`px-3 py-1 rounded-md w-full text-xs font-semibold inline-flex items-center space-x-1 transition-all ${r.status === 'RESOLVED'
                                   ? 'bg-green-200 text-green-600 cursor-default'
-                                  : r.status === 'Diproses'
-                                  ? 'bg-yellow-200 text-yellow-700 hover:bg-yellow-200 cursor-pointer shadow-sm'
-                                  : 'bg-gray-400 text-gray-100 hover:bg-gray-300 cursor-pointer shadow-sm'
-                              }`}
+                                  : r.status === 'IN_PROGRESS'
+                                    ? 'bg-yellow-200 text-yellow-700 hover:bg-yellow-200 cursor-pointer shadow-sm'
+                                    : 'bg-gray-400 text-gray-100 hover:bg-gray-300 cursor-pointer shadow-sm'
+                                }`}
                             >
                               <span>{r.status}</span>
                               {nextStatus && <span className="text-[10px] opacity-70 ml-1">➔ {nextStatus}</span>}
@@ -196,22 +247,20 @@ export default function ReportListPage() {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                    currentPage === 1
+                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${currentPage === 1
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 shadow-sm'
-                  }`}
+                    }`}
                 >
                   Sebelumnya
                 </button>
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
-                    currentPage === totalPages
+                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${currentPage === totalPages
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 shadow-sm'
-                  }`}
+                    }`}
                 >
                   Selanjutnya
                 </button>
