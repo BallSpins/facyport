@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import PageTransition from '../../components/PageTransition';
+import { getStatusLabel } from '@/lib/status';
 
 interface Report {
   id: number;
@@ -113,7 +114,7 @@ export default function InformasiPage() {
       return (
         <span className="px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 bg-green-200 text-green-700">
           <span className="w-2 h-2 rounded-full bg-green-500"></span>
-          {status}
+          {getStatusLabel(status)}
         </span>
       );
     }
@@ -122,7 +123,7 @@ export default function InformasiPage() {
       return (
         <span className="px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 bg-yellow-200 text-yellow-800">
           <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
-          {status}
+          {getStatusLabel(status)}
         </span>
       );
     }
@@ -130,7 +131,7 @@ export default function InformasiPage() {
     return (
       <span className="px-3 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 bg-gray-300 text-gray-700">
         <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-        {status}
+        {getStatusLabel(status)}
       </span>
     );
   };
@@ -168,9 +169,9 @@ export default function InformasiPage() {
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               {[
                 { value: 'Semua', label: 'Semua' },
-                { value: 'SUBMITTED', label: 'Submitted' },
-                { value: 'IN_PROGRESS', label: 'In Progress' },
-                { value: 'RESOLVED', label: 'Resolved' },
+                { value: 'SUBMITTED', label: 'Menunggu' },
+                { value: 'IN_PROGRESS', label: 'Diproses' },
+                { value: 'RESOLVED', label: 'Selesai' },
                 { value: 'Paling Ramai', label: '🔥 Paling Ramai' },
               ].map(({ value, label }) => (
                 <button

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../../../components/PageTransition';
+import { getStatusLabel } from '@/lib/status';
 
 interface ReportDetail {
   id: number;
@@ -19,30 +20,46 @@ export default function ReportDetailClient({ params }: { params: Promise<{ id: s
   const { id } = use(params);
 
   const [report, setReport] = useState<ReportDetail | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
-  // Data dummy foto pelapor
-  const allPhotos = Array.from({ length: 10 }, (_, index) => ({
-    id: index + 1,
-    title: `Foto Dokumentasi #${index + 1}`,
-  }));
+  // State Modal
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDetail = async () => {
+    const fetchAllData = async () => {
       try {
-        const res = await fetch(`https://facyport-backend-nine.vercel.app/api/summaries/${id}`);
-        if (!res.ok) throw new Error(`Laporan tidak ditemukan (${res.status})`);
-        const data: ReportDetail = await res.json();
-        setReport(data);
+        // 1. Fetch detail ringkasan/klaster
+        const resSummary = await fetch(`https://facyport-backend-nine.vercel.app/api/summaries/${id}`);
+        if (!resSummary.ok) throw new Error(`Laporan tidak ditemukan (${resSummary.status})`);
+        const summaryData: ReportDetail = await resSummary.json();
+        setReport(summaryData);
+
+        // 2. Fetch seluruh aduan untuk ekstrak foto bukti
+        try {
+          const resReports = await fetch(`https://facyport-backend-nine.vercel.app/api/summaries/${id}/reports`);
+          if (resReports.ok) {
+            const reportsData: Array<{ img_url?: string }> = await resReports.json();
+            const extractedImages = reportsData
+              .map((r) => r.img_url)
+              .filter((url): url is string => Boolean(url));
+
+            setImages(extractedImages);
+          }
+        } catch (err) {
+          console.error('Gagal mengambil daftar foto aduan:', err);
+        }
+
       } catch (err) {
         setFetchError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
       } finally {
         setLoading(false);
       }
     };
-    fetchDetail();
+
+    fetchAllData();
   }, [id]);
 
   const statusColor = (status: string) => {
@@ -71,7 +88,7 @@ export default function ReportDetailClient({ params }: { params: Promise<{ id: s
           {/* Loading */}
           {loading && (
             <div className="bg-white rounded-2xl shadow border border-gray-100 p-10 text-center text-gray-500 text-sm animate-pulse">
-              Memuat detail laporan...
+              Memuat detail laporan dan dokumentasi...
             </div>
           )}
 
@@ -131,7 +148,7 @@ export default function ReportDetailClient({ params }: { params: Promise<{ id: s
               <div className="border-t border-gray-100 pt-6">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Status Saat Ini</p>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-block shadow-sm ${statusColor(report.status)}`}>
-                  {report.status}
+                  {getStatusLabel(report.status)}
                 </span>
               </div>
 
@@ -143,32 +160,75 @@ export default function ReportDetailClient({ params }: { params: Promise<{ id: s
 
               {/* Tempat Media Foto-foto Pelapor */}
               <div className="border-t border-gray-100 pt-6">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Dokumentasi / Foto Bukti Pelapor</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {/* Foto Dummy 1 */}
-                  <div className="relative group bg-gray-100 rounded-xl overflow-hidden border border-gray-200 aspect-video flex items-center justify-center">
-                    <span className="text-xs text-gray-500 font-medium">Foto Unit #1</span>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
+                  Dokumentasi / Foto Bukti Pelapor ({images.length} Foto)
+                </p>
+
+                {images.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {/* Jika jumlah foto > 3: Tampilkan 2 foto pertama + 1 tombol 'Lihat Lainnya' */}
+                    {images.length > 3 ? (
+                      <>
+                        {images.slice(0, 2).map((imgUrl, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setSelectedPhotoUrl(imgUrl)}
+                            className="relative group bg-gray-100 rounded-xl overflow-hidden border border-gray-200 aspect-video cursor-pointer shadow-sm hover:shadow-md transition-all"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imgUrl}
+                              alt={`Foto Bukti #${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                              Perbesar
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Tombol Lihat Foto Lainnya */}
+                        <button
+                          onClick={() => setShowPhotoModal(true)}
+                          className="relative group bg-blue-50 hover:bg-blue-100 rounded-xl overflow-hidden border border-blue-200 aspect-video flex flex-col items-center justify-center transition-all cursor-pointer shadow-sm"
+                        >
+                          <span className="text-xs font-bold text-blue-600 mb-1">Lihat Lainnya</span>
+                          <span className="text-[10px] text-blue-500 font-medium">+{images.length - 2} Foto Lainnya</span>
+                        </button>
+                      </>
+                    ) : (
+                      /* Jika jumlah foto <= 3: Tampilkan seluruh foto langsung */
+                      images.map((imgUrl, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedPhotoUrl(imgUrl)}
+                          className="relative group bg-gray-100 rounded-xl overflow-hidden border border-gray-200 aspect-video cursor-pointer shadow-sm hover:shadow-md transition-all"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imgUrl}
+                            alt={`Foto Bukti #${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                            Perbesar
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                  {/* Foto Dummy 2 */}
-                  <div className="relative group bg-gray-100 rounded-xl overflow-hidden border border-gray-200 aspect-video flex items-center justify-center">
-                    <span className="text-xs text-gray-500 font-medium">Foto Unit #2</span>
+                ) : (
+                  <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-6 text-center text-xs text-gray-400 font-medium">
+                    📷 Tidak ada dokumentasi foto yang dilampirkan pada laporan ini.
                   </div>
-                  {/* Tombol Lihat Foto Lainnya */}
-                  <button
-                    onClick={() => setShowPhotoModal(true)}
-                    className="relative group bg-blue-50 hover:bg-blue-100 rounded-xl overflow-hidden border border-blue-200 aspect-video flex flex-col items-center justify-center transition-all cursor-pointer shadow-sm"
-                  >
-                    <span className="text-xs font-bold text-blue-600 mb-1">📷 Lihat Lainnya</span>
-                    <span className="text-[10px] text-blue-500 font-medium">+8 Foto Lainnya</span>
-                  </button>
-                </div>
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* MODAL GALERI FOTO */}
+      {/* MODAL 1: GALERI SELURUH FOTO (+N LAINNYA) */}
       <AnimatePresence>
         {showPhotoModal && (
           <motion.div
@@ -190,27 +250,93 @@ export default function ReportDetailClient({ params }: { params: Promise<{ id: s
               <div className="flex justify-between items-center pb-4 border-b border-gray-100 mb-4">
                 <div>
                   <h3 className="text-xl font-bold">Galeri Foto Pelapor</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Menampilkan seluruh dokumentasi (10 Foto)</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Menampilkan seluruh dokumentasi ({images.length} Foto)</p>
                 </div>
+                <button
+                  onClick={() => setShowPhotoModal(false)}
+                  className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Grid Foto */}
-              <div className="overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-4 gap-4 max-h-[60vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
-                {allPhotos.map((photo) => (
+              {/* Grid Seluruh Foto */}
+              <div className="overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[60vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                {images.map((imgUrl, idx) => (
                   <div
-                    key={photo.id}
-                    className="bg-gray-50 border border-gray-200 rounded-xl aspect-video flex flex-col items-center justify-center p-3 shadow-sm hover:shadow transition-all group"
+                    key={idx}
+                    onClick={() => setSelectedPhotoUrl(imgUrl)}
+                    className="relative group bg-gray-100 rounded-xl overflow-hidden border border-gray-200 aspect-video cursor-pointer shadow-sm hover:shadow-md transition-all"
                   >
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2 font-bold text-xs group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      📷
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imgUrl}
+                      alt={`Galeri Bukti #${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                      Perbesar
                     </div>
-                    <span className="text-xs font-semibold text-gray-700 text-center">{photo.title}</span>
                   </div>
                 ))}
               </div>
+
               <div className="pt-4 border-t border-gray-100 mt-4 flex justify-end">
                 <button
                   onClick={() => setShowPhotoModal(false)}
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-all"
+                >
+                  Tutup Galeri
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 2: PRATINJAU HIGH-RES PER-FOTO */}
+      <AnimatePresence>
+        {selectedPhotoUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setSelectedPhotoUrl(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 text-black border border-gray-100 overflow-hidden"
+            >
+              <div className="flex justify-between items-center pb-4 border-b border-gray-100 mb-4">
+                <div>
+                  <h3 className="text-xl font-bold">Detail Dokumentasi Foto</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedPhotoUrl(null)}
+                  className="text-gray-400 hover:text-gray-600 font-bold text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="relative w-full max-h-[65vh] flex items-center justify-center bg-gray-900 rounded-xl overflow-hidden p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selectedPhotoUrl}
+                  alt="Bukti Laporan High Res"
+                  className="max-h-[60vh] w-auto object-contain rounded-lg"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 mt-4 flex justify-end">
+                <button
+                  onClick={() => setSelectedPhotoUrl(null)}
                   className="px-5 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-all"
                 >
                   Tutup

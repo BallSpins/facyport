@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../../components/PageTransition';
+import { getStatusLabel } from '@/lib/status';
 
 interface Report {
   id: number;
@@ -182,18 +183,19 @@ export default function ReportListPage() {
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               {[
                 { value: 'Semua', label: 'Semua' },
-                { value: 'SUBMITTED', label: 'Submitted' },
-                { value: 'IN_PROGRESS', label: 'In Progress' },
-                { value: 'RESOLVED', label: 'Resolved' },
+                { value: 'SUBMITTED', label: 'Menunggu' },
+                { value: 'IN_PROGRESS', label: 'Diproses' },
+                { value: 'RESOLVED', label: 'Selesai' },
                 { value: 'Paling Ramai', label: '🔥 Paling Ramai' },
               ].map(({ value, label }) => (
                 <button
                   key={value}
                   onClick={() => handleStatusFilterChange(value)}
-                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${statusFilter === value
+                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    statusFilter === value
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                  }`}
                 >
                   {label}
                 </button>
@@ -240,7 +242,7 @@ export default function ReportListPage() {
                                   setSelectedReport({ id: r.id, judul: r.judul, status: r.status });
                                 }
                               }}
-                              title={nextStatus ? `Ubah status ke ${nextStatus}` : 'Status sudah RESOLVED (Tidak dapat diubah)'}
+                              title={nextStatus ? `Ubah status ke ${getStatusLabel(nextStatus)}` : 'Status sudah Selesai (Tidak dapat diubah)'}
                               className={`px-3 py-1 rounded-md w-full text-xs font-semibold inline-flex items-center space-x-1 transition-all ${r.status === 'RESOLVED'
                                   ? 'bg-green-200 text-green-600 cursor-default'
                                   : r.status === 'IN_PROGRESS'
@@ -248,8 +250,8 @@ export default function ReportListPage() {
                                     : 'bg-gray-400 text-gray-100 hover:bg-gray-300 cursor-pointer shadow-sm'
                                 }`}
                             >
-                              <span>{r.status}</span>
-                              {nextStatus && <span className="text-[10px] opacity-70 ml-1">➔ {nextStatus}</span>}
+                              <span>{getStatusLabel(r.status)}</span>
+                              {nextStatus && <span className="text-[10px] opacity-70 ml-1">➔ {getStatusLabel(nextStatus)}</span>}
                             </button>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-400">{r.tanggal}</td>
@@ -326,8 +328,8 @@ export default function ReportListPage() {
                 <h3 className="text-xl font-bold mb-2">Konfirmasi Perubahan Status</h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Apakah Anda yakin ingin mengubah status laporan <span className="font-semibold text-gray-900">&quot;{selectedReport.judul}&quot;</span> dari{' '}
-                  <span className="font-semibold text-blue-600">{selectedReport.status}</span> ke{' '}
-                  <span className="font-semibold text-green-600">{getNextStatus(selectedReport.status)}</span>?
+                  <span className="font-semibold text-blue-600">{getStatusLabel(selectedReport.status)}</span> ke{' '}
+                  <span className="font-semibold text-green-600">{getStatusLabel(getNextStatus(selectedReport.status))}</span>?
                 </p>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-6 text-xs text-yellow-800">
                   ⚠️ Perhatian: Status yang sudah ditingkatkan tidak dapat diturunkan kembali ke tahap sebelumnya.

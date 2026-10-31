@@ -49,7 +49,7 @@ export default function Sidebar() {
       <div className="pt-4 border-t border-gray-800">
         <button
           onClick={handleLogout}
-          className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-800 rounded-lg transition"
+          className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-200 rounded-lg transition"
         >
           Keluar (Logout)
         </button>
