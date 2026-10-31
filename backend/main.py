@@ -120,7 +120,7 @@ async def create_report(
         return {
             "status": "queued",
             "message": "Laporan berhasil diterima dan masuk ke antrean pemrosesan AI.",
-            "message_id": res.get("messageId")
+            "message_id": getattr(res, "message_id", str(res))
         }
     except Exception as e:
         print(f"[!] Gagal enqueue ke QStash: {e}")
