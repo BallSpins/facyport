@@ -80,6 +80,47 @@ def read_root():
 
 # --- ENDPOINTS LAPORAN (REPORTS) ---
 @app.post(
+    "/api/reports-sync",
+    response_model=ReportProcessResult,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Reports"],
+)
+@limiter.limit("30/minute")
+async def create_report(
+    request: Request,
+    raw_text: str = Form(...),
+    image: Optional[UploadFile] = File(None)
+):
+    db = get_db_connection()
+    ai_service = get_ai_service()
+    service = ReportService(db_conn=db, ai_service=ai_service)
+
+    file_bytes: Optional[bytes] = None
+    img_key: Optional[str] = None
+
+    if image and image.filename:
+        file_bytes = await image.read()
+        if len(file_bytes) > 0:
+            try:
+                storage_service = StorageService()
+                # Simpan ke R2 Private Bucket
+                img_key = storage_service.upload_private_file(
+                    file_bytes=file_bytes,
+                    content_type=image.content_type or "image/jpeg"
+                )
+            except Exception as e:
+                print(f"[!] Gagal upload ke R2 Private Storage: {e}")
+
+    # Jalankan AI Pipeline menggunakan file_bytes yang ada di memori
+    result = service.process_incoming_report(
+        incoming_text=raw_text,
+        img_bytes=file_bytes,
+        img_key=img_key
+    )
+    return result
+
+
+@app.post(
     "/api/reports",
     status_code=status.HTTP_202_ACCEPTED,
     tags=["Reports"],
