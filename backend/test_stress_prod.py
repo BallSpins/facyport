@@ -68,4 +68,6 @@ async def run_benchmark(target_url: str, label: str):
 
 if __name__ == "__main__":
     # Jalankan benchmark pada endpoint QStash
+    asyncio.run(run_benchmark(SYNC_URL, "TANPA QSTASH (SYNC QUEUE)"))
+    time.sleep(80)
     asyncio.run(run_benchmark(ASYNC_URL, "DENGAN QSTASH (ASYNC QUEUE)"))
