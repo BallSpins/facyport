@@ -12,6 +12,25 @@ FacyPort adalah platform pelaporan fasilitas kampus. Pengguna dapat mengirim lap
 - Halaman publik untuk mencari dan memfilter ringkasan laporan.
 - Dashboard admin dengan autentikasi dan pembaruan status laporan.
 
+## Deklarasi Penggunaan AI dan Layanan Pihak Ketiga
+
+### 1. Deklarasi Penggunaan AI (AI Use Declaration)
+
+* **AI Models dalam Pipeline Sistem (Runtime AI):**
+  * **Google Gemini 3.5 Flash:** Digunakan pada backend FastAPI untuk moderasi konten (filter spam, teks acak, ujaran kebencian/profanity), ekstraksi ringkasan isu otomatis, kategorisasi isu, dan ekstraksi kata kunci.
+  * **Google Gemini Embedding (`text-embedding-004`):** Digunakan untuk mengonversi ringkasan aduan menjadi vector embedding (768 dimensi) guna proses pencocokan isu sejenis (*Cosine Similarity Search > 0.85*) di database.
+* **AI Assistance dalam Pengembangan (Development Tools):**
+  * Penggunaan LLM (Gemini, ChatGPT, dan Claude) dimanfaatkan sebagai asisten pengodingan untuk *brainstorming* arsitektur, *refactoring* kode, pembuatan draf dokumentasi, serta penulisan skrip pengujian/benchmark.
+
+### 2. Deklarasi Layanan Pihak Ketiga (Third-Party Declaration)
+
+| Layanan | Provider | Kegunaan dalam Sistem |
+|---|---|---|
+| **Turso (libSQL)** | ChiselStrike | Primary Relational & Vector Database untuk penyimpanan laporan, data klaster, dan vector search. |
+| **Upstash QStash** | Upstash | Serverless Message Queue & Rate Limiting (15 RPM) untuk memproses pekerjaan AI secara *asynchronous*. |
+| **Cloudflare R2** | Cloudflare | Private Object Storage (S3-compatible) untuk menyimpan foto bukti aduan dari pelapor. |
+| **Vercel** | Vercel Inc. | Hosting & Serverless Platform untuk deployment Frontend (Next.js) dan Backend (FastAPI). |
+
 ## Struktur Repository
 
 ```text
@@ -191,3 +210,13 @@ Skrip backend tersebut dapat memanggil Gemini dan mengubah data Turso. Jangan ja
 - Gunakan secret JWT yang kuat dan simpan hanya di environment server.
 - Jangan mengekspos kredensial admin backend ke bundle browser.
 - Operasi flush database dan bucket R2 bersifat destruktif. Pastikan targetnya environment disposable sebelum menjalankannya.
+
+## Tim Pengembang
+
+Proyek ini dikembangkan oleh Tim **Aristoteles Bar Adus** dari Universitas Pembangunan Nasional "Veteran" Jawa Timur:
+
+| Nama | Program Studi | GitHub |
+|---|---|---|
+| **Muhammad Faizal Andra Kurniawan** | Informatika | [@Andrr008](https://github.com/Andrr008) |
+| **Muhammad Fauzan Faturosi** | Fisika | [@BallSpins](https://github.com/BallSpins) |
+| **Fasabih Jagaddecko Wicolaksono** | Desain Komunikasi Visual | [@Amaneeee](https://github.com/Amaneeee) |
