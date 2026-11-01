@@ -20,7 +20,7 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between relative z-50">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-white/75 backdrop-blur-md border-b border-gray-200/60 px-6 py-3 flex items-center justify-between shadow-sm">
       {/* Logo */}
       <Link href="/" className="flex items-center space-x-3 text-xl font-bold text-blue-600">
         <svg
