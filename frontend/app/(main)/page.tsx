@@ -105,9 +105,9 @@ export default function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { step: '01', title: 'Kirim Aduan', desc: 'Isi ringkasan kendala dan unggah foto bukti kerusakan fasilitas.' },
-        { step: '02', title: 'Analisis AI', desc: 'AI memeriksa kelayakan dan mencocokkan isu dengan aduan lain.' },
-        { step: '03', title: 'Tindak Lanjut', desc: 'Pengelola kampus menerima klaster isu dan melakukan perbaikan.' },
-        { step: '04', title: 'Pantau Real-time', desc: 'Seluruh pelapor dapat memantau perkembangan status laporan secara transparan di halaman Informasi.' },
+                { step: '02', title: 'Analisis AI', desc: 'AI memeriksa kelayakan dan mencocokkan isu dengan aduan lain.' },
+                { step: '03', title: 'Tindak Lanjut', desc: 'Pengelola kampus menerima klaster isu dan melakukan perbaikan.' },
+                { step: '04', title: 'Pantau Real-time', desc: 'Seluruh pelapor dapat memantau perkembangan status laporan secara transparan di halaman Informasi.' },
               ].map((item) => (
                 <div key={item.step} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
                   <span className="text-4xl font-black text-blue-100 absolute top-3 right-4 select-none">
